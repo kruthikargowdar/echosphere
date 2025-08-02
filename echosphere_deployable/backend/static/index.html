@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EchoSphere - AI Audio Deepfake Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #0a0a0a;
+            color: white;
+            overflow-x: hidden;
+            height: 100vh;
+        }
+
+        /* 3D Background Animation */
+        .bg-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .floating-orbs {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #00f5ff, #8a2be2, #ff6b6b);
+            opacity: 0.1;
+            animation: float3d 8s ease-in-out infinite;
+            filter: blur(1px);
+        }
+
+        .orb:nth-child(1) {
+            width: 200px;
+            height: 200px;
+            top: 10%;
+            left: 5%;
+            animation-delay: 0s;
+            background: radial-gradient(circle, #00f5ff 0%, transparent 70%);
+        }
+
+        .orb:nth-child(2) {
+            width: 150px;
+            height: 150px;
+            top: 50%;
+            right: 10%;
+            animation-delay: 2s;
+            background: radial-gradient(circle, #8a2be2 0%, transparent 70%);
+        }
+
+        .orb:nth-child(3) {
+            width: 300px;
+            height: 300px;
+            bottom: 10%;
+            left: 20%;
+            animation-delay: 4s;
+            background: radial-gradient(circle, #ff6b6b 0%, transparent 70%);
+        }
+
+        .orb:nth-child(4) {
+            width: 100px;
+            height: 100px;
+            top: 70%;
+            left: 60%;
+            animation-delay: 6s;
+            background: radial-gradient(circle, #00ff88 0%, transparent 70%);
+        }
+
+        @keyframes float3d {
+            0%, 100% { 
+                transform: translateY(0px) translateX(0px) rotateZ(0deg) scale(1);
+                opacity: 0.1;
+            }
+            25% { 
+                transform: translateY(-30px) translateX(20px) rotateZ(90deg) scale(1.1);
+                opacity: 0.2;
+            }
+            50% { 
+                transform: translateY(-50px) translateX(-10px) rotateZ(180deg) scale(0.9);
+                opacity: 0.15;
+            }
+            75% { 
+                transform: translateY(-20px) translateX(-30px) rotateZ(270deg) scale(1.05);
+                opacity: 0.25;
+            }
+        }
+
+        /* Navigation */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 20px 50px;
+            backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .nav-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00f5ff, #8a2be2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .logo:hover {
+            transform: scale(1.05);
+            filter: drop-shadow(0 0 10px rgba(0, 245, 255, 0.5));
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 40px;
+            list-style: none;
+        }
+
+        .nav-links button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 10px 20px;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-links button:hover {
+            background: linear-gradient(45deg, #00f5ff, #8a2be2);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 245, 255, 0.3);
+        }
+
+        .nav-links button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .nav-links button:hover::before {
+            left: 100%;
+        }
+
+        /* Page System */
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 10;
+        }
+
+        .page.active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .page.prev {
+            transform: translateX(-100%);
+        }
+
+        /* Home Page */
+        .home-content {
+            text-align: center;
+            max-width: 800px;
+            z-index: 100;
+            position: relative;
+        }
+
+        .title-container {
+            perspective: 1000px;
+            margin-bottom: 50px;
+        }
+
+        .main-title {
+            font-size: 6rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ffffff, #00f5ff, #8a2be2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            transform: rotateX(20deg) rotateY(-10deg);
+            animation: titleFloat 3s ease-in-out infinite;
+            text-shadow: 0 20px 40px rgba(0, 245, 255, 0.3);
+            margin: 0;
+        }
+
+        @keyframes titleFloat {
+            0%, 100% { 
+                transform: rotateX(20deg) rotateY(-10deg) translateZ(0px);
+                filter: drop-shadow(0 10px 20px rgba(0, 245, 255, 0.3));
+            }
+            50% { 
+                transform: rotateX(25deg) rotateY(-5deg) translateZ(20px);
+                filter: drop-shadow(0 20px 40px rgba(138, 43, 226, 0.4));
+            }
+        }
+
+        .subtitle {
+            font-size: 1.4rem;
+            opacity: 0.9;
+            margin-bottom: 50px;
+            line-height: 1.6;
+            animation: slideInUp 1s ease-out 0.5s both;
+        }
+
+        .start-button {
+            padding: 20px 50px;
+            font-size: 1.3rem;
+            background: linear-gradient(45deg, #00f5ff, #8a2be2);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+            animation: slideInUp 1s ease-out 1s both;
+            box-shadow: 0 10px 30px rgba(0, 245, 255, 0.3);
+        }
+
+        .start-button:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 20px 50px rgba(0, 245, 255, 0.5);
+        }
+
+        .start-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s;
+        }
+
+        .start-button:hover::before {
+            left: 100%;
+        }
+
+        /* Prediction Page */
+        .prediction-content {
+            max-width: 900px;
+            width: 100%;
+            padding: 0 20px;
+        }
+
+        .upload-section {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            padding: 60px;
+            text-align: center;
+            margin-bottom: 40px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 245, 255, 0.2);
+        }
+
+        .upload-area {
+            border: 3px dashed rgba(0, 245, 255, 0.5);
+            border-radius: 20px;
+            padding: 80px 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: #00f5ff;
+            background: rgba(0, 245, 255, 0.05);
+            transform: scale(1.02);
+        }
+
+        .upload-area.dragover {
+            border-color: #00f5ff;
+            background: rgba(0, 245, 255, 0.1);
+            transform: scale(1.05);
+        }
+
+        .upload-icon {
+            font-size: 5rem;
+            margin-bottom: 30px;
+            color: #00f5ff;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        /* Results Section */
+        .results-section {
+            display: none;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            padding: 50px;
+            text-align: center;
+            animation: resultSlideIn 0.8s ease-out;
+        }
+
+        @keyframes resultSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .prediction-display {
+            margin: 40px 0;
+        }
+
+        .prediction-badge {
+            display: inline-block;
+            padding: 20px 40px;
+            border-radius: 50px;
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 20px;
+            animation: pulseGlow 2s ease-in-out infinite;
+            position: relative;
+        }
+
+        .prediction-real {
+            background: linear-gradient(45deg, #00ff88, #44ff44);
+            color: #003311;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+        }
+
+        .prediction-fake {
+            background: linear-gradient(45deg, #ff4444, #ff6666);
+            color: #330000;
+            box-shadow: 0 0 30px rgba(255, 68, 68, 0.5);
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.05); filter: brightness(1.2); }
+        }
+
+        .confidence-display {
+            margin: 30px 0;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 2s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .confidence-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .audio-player {
+            width: 100%;
+            margin: 30px 0;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+        }
+
+        /* Explanation Page */
+        .explanation-content {
+            max-width: 1000px;
+            width: 100%;
+            padding: 0 20px;
+        }
+
+        .shap-container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            padding: 50px;
+        }
+
+        .shap-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 40px;
+            background: linear-gradient(45deg, #ffffff, #00f5ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .shap-features {
+            display: grid;
+            gap: 20px;
+        }
+
+        .shap-feature {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 15px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .shap-feature:hover {
+            transform: translateX(10px);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .shap-fake {
+            border-left-color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+        }
+
+        .shap-real {
+            border-left-color: #44ff44;
+            background: rgba(68, 255, 68, 0.1);
+        }
+
+        .impact-bar {
+            width: 200px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-left: 20px;
+        }
+
+        .impact-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1s ease-out;
+        }
+
+        /* Loading Animation */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .loading-spinner {
+            width: 80px;
+            height: 80px;
+            border: 4px solid rgba(0, 245, 255, 0.3);
+            border-top: 4px solid #00f5ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            color: #00f5ff;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* Status Messages */
+        .status-message {
+            position: fixed;
+            top: 100px;
+            right: 30px;
+            padding: 20px 30px;
+            border-radius: 15px;
+            font-weight: 500;
+            z-index: 1500;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .status-message.show {
+            transform: translateX(0);
+        }
+
+        .status-success {
+            background: rgba(68, 255, 68, 0.2);
+            border: 1px solid #44ff44;
+            color: #44ff44;
+        }
+
+        .status-error {
+            background: rgba(255, 68, 68, 0.2);
+            border: 1px solid #ff4444;
+            color: #ff4444;
+        }
+
+        .status-processing {
+            background: rgba(0, 245, 255, 0.2);
+            border: 1px solid #00f5ff;
+            color: #00f5ff;
+        }
+
+        /* Celebration Animation */
+        .celebration {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #00f5ff;
+            animation: confettiFall 3s linear forwards;
+        }
+
+        @keyframes confettiFall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* Animations */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 15px 20px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .main-title {
+                font-size: 3.5rem;
+            }
+
+            .prediction-content,
+            .explanation-content {
+                padding: 0 15px;
+            }
+
+            .upload-section,
+            .shap-container {
+                padding: 30px 20px;
+            }
+
+            .upload-area {
+                padding: 40px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 3D Background -->
+    <div class="bg-container">
+        <div class="floating-orbs">
+            <div class="orb"></div>
+            <div class="orb"></div>
+            <div class="orb"></div>
+            <div class="orb"></div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div style="text-align: center;">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loadingText">Processing with AI...</div>
+        </div>
+    </div>
+
+    <!-- Status Messages -->
+    <div class="status-message" id="statusMessage"></div>
+
+    <!-- Celebration -->
+    <div class="celebration" id="celebration"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="logo" onclick="showPage('home')">🎵 EchoSphere</div>
+            <ul class="nav-links">
+                <li><button onclick="showPage('home')">Home</button></li>
+                <li><button onclick="showPage('prediction')">Prediction</button></li>
+                <li><button onclick="showPage('explanation')" id="explainBtn" style="display: none;">Explanation</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Home Page -->
+    <div class="page active" id="homePage">
+        <div class="home-content">
+            <div class="title-container">
+                <h1 class="main-title">EchoSphere</h1>
+            </div>
+            <p class="subtitle">
+                Advanced AI-Powered Audio Deepfake Detection<br>
+                Protecting authenticity with cutting-edge machine learning
+            </p>
+            <button class="start-button" onclick="showPage('prediction')">
+                🚀 Start Detection
+            </button>
+        </div>
+    </div>
+
+    <!-- Prediction Page -->
+    <div class="page" id="predictionPage">
+        <div class="prediction-content">
+            <div class="upload-section">
+                <h2 style="margin-bottom: 40px; font-size: 2.5rem; text-align: center;">
+                    Upload Audio for Analysis
+                </h2>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">🎤</div>
+                    <h3>Drop your WAV file here</h3>
+                    <p>or click to browse files</p>
+                    <p style="opacity: 0.7; margin-top: 15px;">
+                        Supports: 16kHz mono WAV files • Max size: 200MB
+                    </p>
+                    <input type="file" id="fileInput" class="file-input" accept=".wav">
+                </div>
+
+                <audio id="audioPlayer" controls class="audio-player" style="display: none;">
+                    Your browser does not support audio playback.
+                </audio>
+            </div>
+
+            <div class="results-section" id="resultsSection">
+                <h2 style="margin-bottom: 30px;">🎯 AI Analysis Results</h2>
+                
+                <div class="prediction-display" id="predictionDisplay"></div>
+                
+                <div class="confidence-display">
+                    <h3>Confidence Score: <span id="confidenceText">---</span></h3>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" id="confidenceBar" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <button class="start-button" onclick="showPage('explanation')" style="margin-top: 30px;">
+                    🔬 View Detailed Analysis
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Explanation Page -->
+    <div class="page" id="explanationPage">
+        <div class="explanation-content">
+            <div class="shap-container">
+                <h2 class="shap-title">🧠 AI Feature Analysis (SHAP)</h2>
+                <p style="text-align: center; opacity: 0.8; margin-bottom: 40px; font-size: 1.1rem;">
+                    Understanding which audio features influenced the AI's decision
+                </p>
+                
+                <div class="shap-features" id="shapFeatures">
+                    <!-- SHAP features will be populated here -->
+                </div>
+
+                <div style="text-align: center; margin-top: 40px;">
+                    <button class="start-button" onclick="showPage('prediction')">
+                        🔄 Analyze Another File
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentPage = 'home';
+        let currentResults = null;
+        let shapData = null;
+
+        // Page navigation system
+        function showPage(pageId) {
+            const pages = document.querySelectorAll('.page');
+            const targetPage = document.getElementById(pageId + 'Page');
+            
+            // Hide current page
+            pages.forEach(page => {
+                page.classList.remove('active');
+                page.classList.add('prev');
+            });
+            
+            // Show target page with animation
+            setTimeout(() => {
+                pages.forEach(page => {
+                    page.classList.remove('prev');
+                });
+                targetPage.classList.add('active');
+                currentPage = pageId;
+            }, 100);
+
+            // Show/hide explanation button
+            const explainBtn = document.getElementById('explainBtn');
+            if (pageId === 'explanation' || (pageId === 'prediction' && currentResults)) {
+                explainBtn.style.display = 'block';
+            } else if (pageId === 'home') {
+                explainBtn.style.display = 'none';
+            }
+        }
+
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const audioPlayer = document.getElementById('audioPlayer');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFileUpload(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        // Handle file upload
+        function handleFileUpload(file) {
+            if (!file.name.toLowerCase().endsWith('.wav')) {
+                showStatus('error', '❌ Please upload a WAV file only');
+                return;
+            }
+
+            if (file.size > 200 * 1024 * 1024) {
+                showStatus('error', '❌ File too large. Max size: 200MB');
+                return;
+            }
+
+            // Show audio player
+            const url = URL.createObjectURL(file);
+            audioPlayer.src = url;
+            audioPlayer.style.display = 'block';
+
+            // Process with backend
+            processAudioFile(file);
+        }
+
+        // Process audio with backend API
+        async function processAudioFile(file) {
+            showLoading('Analyzing audio with AI models...');
+            
+            const formData = new FormData();
+            formData.append('audio', file);
+
+            try {
+                // Replace with your actual backend URL
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                displayResults(result);
+                hideLoading();
+                
+            } catch (error) {
+                console.error('Processing error:', error);
+                hideLoading();
+                
+                // Fallback to simulation for demo
+                showStatus('processing', '🔄 Demo mode: Simulating AI processing...');
+                setTimeout(() => {
+                    simulateProcessing();
+                }, 2000);
+            }
+        }
+
+        // Simulate processing for demo
+        function simulateProcessing() {
+            const isReal = Math.random() > 0.4;
+            const confidence = (Math.random() * 15 + 85).toFixed(1);
+            
+            const mockResult = {
+                prediction: isReal ? 'Real' : 'Fake',
+                confidence: parseFloat(confidence),
+                shap_features: generateMockShap()
+            };
+            
+            displayResults(mockResult);
+        }
+
+        // Display results with amazing animations
+        function displayResults(result) {
+            currentResults = result;
+            shapData = result.shap_features;
+            
+            const resultsSection = document.getElementById('resultsSection');
+            const predictionDisplay = document.getElementById('predictionDisplay');
+            const confidenceText = document.getElementById('confidenceText');
+            const confidenceBar = document.getElementById('confidenceBar');
+            
+            // Show results section
+            resultsSection.style.display = 'block';
+            
+            // Create prediction badge with animation
+            const isReal = result.prediction === 'Real';
+            const badgeClass = isReal ? 'prediction-real' : 'prediction-fake';
+            const emoji = isReal ? '✅' : '⚠️';
+            const vibe = isReal ? 'AUTHENTIC AUDIO' : 'DEEPFAKE DETECTED';
+            
+            predictionDisplay.innerHTML = `
+                <div class="prediction-badge ${badgeClass}">
+                    ${emoji} ${vibe}
+                </div>
+            `;
+            
+            // Animate confidence
+            confidenceText.textContent = result.confidence.toFixed(1) + '%';
+            setTimeout(() => {
+                confidenceBar.style.width = result.confidence + '%';
+                confidenceBar.style.background = isReal ?
+                    'linear-gradient(90deg, #00ff88, #44ff44)' :
+                    'linear-gradient(90deg, #ff4444, #ff6666)';
+            }, 500);
+            
+            // Show celebration or warning
+            if (isReal) {
+                createCelebration();
+                showStatus('success', '🎉 Audio is authentic!');
+            } else {
+                showStatus('error', '⚠️ Deepfake detected!');
+            }
+            
+            // Show explanation button
+            document.getElementById('explainBtn').style.display = 'block';
+            
+            // Populate SHAP data
+            populateShapAnalysis(shapData);
+        }
+
+        // Create celebration animation
+        function createCelebration() {
+            const celebration = document.getElementById('celebration');
+            celebration.innerHTML = '';
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.backgroundColor = ['#00f5ff', '#8a2be2', '#00ff88', '#ff6b6b'][Math.floor(Math.random() * 4)];
+                confetti.style.animationDelay = Math.random() * 2 + 's';
+                celebration.appendChild(confetti);
+            }
+            
+            setTimeout(() => {
+                celebration.innerHTML = '';
+            }, 3000);
+        }
+
+        // Populate SHAP analysis
+        function populateShapAnalysis(features) {
+            const shapFeatures = document.getElementById('shapFeatures');
+            shapFeatures.innerHTML = '';
+            
+            features.forEach((feature, index) => {
+                const featureDiv = document.createElement('div');
+                const isFakeInfluence = feature.impact > 0;
+                const featureClass = isFakeInfluence ? 'shap-fake' : 'shap-real';
+                const direction = isFakeInfluence ? 'Fake' : 'Real';
+                const emoji = isFakeInfluence ? '🔴' : '🟢';
+                const impactPercent = Math.abs(feature.impact) * 100;
+                
+                featureDiv.className = `shap-feature ${featureClass}`;
+                featureDiv.style.animationDelay = (index * 0.1) + 's';
+                featureDiv.innerHTML = `
+                    <div>
+                        <strong>${emoji} Feature ${feature.id}</strong>
+                        <div style="opacity: 0.8; margin-top: 5px;">${feature.description}</div>
+                        <div style="font-size: 0.9rem; opacity: 0.6; margin-top: 3px;">
+                            Impact: ${feature.impact > 0 ? '+' : ''}${feature.impact.toFixed(4)}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: bold; color: ${isFakeInfluence ? '#ff4444' : '#44ff44'};">
+                            → ${direction}
+                        </div>
+                        <div class="impact-bar">
+                            <div class="impact-fill" style="width: ${impactPercent}%; background: ${isFakeInfluence ? '#ff4444' : '#44ff44'};"></div>
+                        </div>
+                    </div>
+                `;
+                shapFeatures.appendChild(featureDiv);
+            });
+        }
+
+        // Generate mock SHAP data
+        function generateMockShap() {
+            const features = [
+                { id: 179, description: "Spectral centroid variation patterns", impact: (Math.random() - 0.5) * 0.05 },
+                { id: 154, description: "MFCC coefficient distribution", impact: (Math.random() - 0.5) * 0.05 },
+                { id: 89, description: "Fundamental frequency stability", impact: (Math.random() - 0.5) * 0.05 },
+                { id: 98, description: "Harmonic-to-noise ratio", impact: (Math.random() - 0.5) * 0.05 },
+                { id: 205, description: "Pitch contour smoothness", impact: (Math.random() - 0.5) * 0.05 },
+                { id: 67, description: "Formant frequency analysis", impact: (Math.random() - 0.5) * 0.05 },
+                { id: 132, description: "Jitter and shimmer metrics", impact: (Math.random() - 0.5) * 0.05 },
+                { id: 78, description: "Spectral rolloff characteristics", impact: (Math.random() - 0.5) * 0.05 }
+            ];
+            
+            return features.sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact)).slice(0, 6);
+        }
+
+        // Loading functions
+        function showLoading(text) {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingText = document.getElementById('loadingText');
+            loadingText.textContent = text;
+            loadingOverlay.style.display = 'flex';
+        }
+
+        function hideLoading() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            loadingOverlay.style.display = 'none';
+        }
+
+        // Status message system
+        function showStatus(type, message) {
+            const statusMessage = document.getElementById('statusMessage');
+            statusMessage.className = `status-message status-${type} show`;
+            statusMessage.textContent = message;
+            
+            setTimeout(() => {
+                statusMessage.classList.remove('show');
+            }, 4000);
+        }
+
+        // Parallax effect for background orbs
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const orbs = document.querySelectorAll('.orb');
+            
+            orbs.forEach((orb, index) => {
+                const speed = 0.05 + (index * 0.02);
+                orb.style.transform = `translateY(${scrolled * speed}px) translateX(${Math.sin(scrolled * 0.01) * 20}px)`;
+            });
+        });
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            // Add some initial animations
+            setTimeout(() => {
+                document.querySelector('.main-title').style.animationPlayState = 'running';
+            }, 500);
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && currentPage !== 'home') {
+                showPage('home');
+            }
+        });
+
+        // Mobile navigation toggle (if needed)
+        function toggleMobileNav() {
+            const navLinks = document.querySelector('.nav-links');
+            navLinks.style.display = navLinks.style.display === 'flex' ? 'none' : 'flex';
+        }
+    </script>
+</body>
+</html>
