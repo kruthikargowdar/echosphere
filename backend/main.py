@@ -11,7 +11,8 @@ from model_utils import load_models, predict_audio_file
 app = FastAPI()
 
 # Mount static folder
-app.mount("/static", StaticFiles(directory="static"), name="static")
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # Serve frontend index.html
 @app.get("/", response_class=FileResponse)
