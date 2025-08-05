@@ -10,6 +10,7 @@ from speechbrain.inference.speaker import EncoderClassifier
 EMBEDDING_MODEL_PATH = "../embedding_model"
 CLASSIFIER_PATH = "../mlp_classifier.pkl"
 EXPLAINER_PATH = "../shap_explainer.pkl"
+
 def load_models():
     print("🔁 Loading models...")
 
