@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 # Import your model utils
-from model_utils import load_models, predict_audio_file
+from .model_utils import load_models, predict_audio_file
 
 app = FastAPI()
 
