@@ -1,9 +1,10 @@
-fastapi
-uvicorn
-joblib
-numpy
-shap
-speechbrain
-scikit-learn
-python-multipart
+fastapi==0.111.0
+uvicorn==0.30.0
+joblib==1.4.2
+numpy==1.26.4
+shap==0.44.1
+speechbrain==0.5.16
+scikit-learn==1.5.1
+python-multipart==0.0.9
+torch==2.2.2+cpu --index-url https://download.pytorch.org/whl/cpu
 
