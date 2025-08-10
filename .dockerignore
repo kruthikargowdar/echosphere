@@ -1,0 +1,13 @@
+.git
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.ckpt
+*.pth
+*.wav
+embedding_model/
+mlp_classifier.pkl
+shap_explainer.pkl
+echosphere_deployable/
+node_modules/
