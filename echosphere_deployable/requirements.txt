@@ -3,7 +3,7 @@ fastapi
 uvicorn[standard]
 joblib
 numpy
-shap
+shap==0.42.1
 speechbrain
 scikit-learn
 python-multipart
