@@ -760,19 +760,23 @@
     <div class="page" id="explanationPage">
         <div class="explanation-content">
             <div class="shap-container">
-                <h2 class="shap-title">🧠 AI Feature Analysis (SHAP)</h2>
+                <h2 class="shap-title">🧠 Model Signals & LLM Explanation</h2>
                 <p style="text-align: center; opacity: 0.8; margin-bottom: 40px; font-size: 1.1rem;">
-                    Understanding which audio features influenced the AI's decision
+                    SHAP values show influential learned embedding dimensions. They are not named acoustic features or proof of why a prediction is correct.
                 </p>
                 
                 <div class="shap-features" id="shapFeatures">
                     <!-- SHAP features will be populated here -->
                 </div>
 
+                <section style="margin: 32px auto; max-width: 760px; text-align: center;">
+                    <h3>✨ LLM result explanation</h3>
+                    <p>The language model explains the classifier output and its limits. Your audio is not sent to the language model.</p>
+                    <button class="start-button" id="llmExplainButton" onclick="requestLlmExplanation()">Generate explanation</button>
+                    <p id="llmExplanation" role="status" style="white-space: pre-wrap; margin-top: 18px;"></p>
+                </section>
                 <div style="text-align: center; margin-top: 40px;">
-                    <button class="start-button" onclick="showPage('prediction')">
-                        🔄 Analyze Another File
-                    </button>
+                    <button class="start-button" onclick="showPage('prediction')">🔄 Analyze Another File</button>
                 </div>
             </div>
         </div>
@@ -879,7 +883,8 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Server error: ${response.status}`);
+                    const body = await response.json().catch(() => ({}));
+                    throw new Error(body.detail || `Server error: ${response.status}`);
                 }
 
                 const result = await response.json();
@@ -890,32 +895,16 @@
                 console.error('Processing error:', error);
                 hideLoading();
                 
-                // Fallback to simulation for demo
-                showStatus('processing', '🔄 Demo mode: Simulating AI processing...');
-                setTimeout(() => {
-                    simulateProcessing();
-                }, 2000);
+                showStatus('error', `❌ Analysis failed: ${error.message}. No prediction was generated.`);
             }
-        }
-
-        // Simulate processing for demo
-        function simulateProcessing() {
-            const isReal = Math.random() > 0.4;
-            const confidence = (Math.random() * 15 + 85).toFixed(1);
-            
-            const mockResult = {
-                prediction: isReal ? 'Real' : 'Fake',
-                confidence: parseFloat(confidence),
-                shap_features: generateMockShap()
-            };
-            
-            displayResults(mockResult);
         }
 
         // Display results with amazing animations
         function displayResults(result) {
             currentResults = result;
-            shapData = result.shap_features;
+            shapData = result.shap_features || [];
+            document.getElementById('llmExplanation').textContent = '';
+            document.getElementById('llmExplainButton').disabled = false;
             
             const resultsSection = document.getElementById('resultsSection');
             const predictionDisplay = document.getElementById('predictionDisplay');
@@ -926,10 +915,10 @@
             resultsSection.style.display = 'block';
             
             // Create prediction badge with animation
-            const isReal = result.prediction === 'Real';
+            const isReal = String(result.prediction).toLowerCase() === 'real';
             const badgeClass = isReal ? 'prediction-real' : 'prediction-fake';
             const emoji = isReal ? '✅' : '⚠️';
-            const vibe = isReal ? 'AUTHENTIC AUDIO' : 'DEEPFAKE DETECTED';
+            const vibe = isReal ? 'MODEL CLASSIFIED AS REAL' : 'MODEL CLASSIFIED AS FAKE';
             
             predictionDisplay.innerHTML = `
                 <div class="prediction-badge ${badgeClass}">
@@ -949,9 +938,9 @@
             // Show celebration or warning
             if (isReal) {
                 createCelebration();
-                showStatus('success', '🎉 Audio is authentic!');
+                showStatus('success', 'Model classified this audio as Real. This result is not proof of authenticity.');
             } else {
-                showStatus('error', '⚠️ Deepfake detected!');
+                showStatus('error', 'Model classified this audio as Fake. This result is not definitive.');
             }
             
             // Show explanation button
@@ -980,56 +969,46 @@
             }, 3000);
         }
 
-        // Populate SHAP analysis
+        // Show numerical SHAP signals without assigning unsupported acoustic meanings.
         function populateShapAnalysis(features) {
-            const shapFeatures = document.getElementById('shapFeatures');
-            shapFeatures.innerHTML = '';
-            
+            const container = document.getElementById('shapFeatures');
+            container.innerHTML = '';
+            if (!features || features.length === 0) {
+                container.textContent = 'SHAP values are unavailable for this result.';
+                return;
+            }
             features.forEach((feature, index) => {
-                const featureDiv = document.createElement('div');
-                const isFakeInfluence = feature.impact > 0;
-                const featureClass = isFakeInfluence ? 'shap-fake' : 'shap-real';
-                const direction = isFakeInfluence ? 'Fake' : 'Real';
-                const emoji = isFakeInfluence ? '🔴' : '🟢';
-                const impactPercent = Math.abs(feature.impact) * 100;
-                
-                featureDiv.className = `shap-feature ${featureClass}`;
-                featureDiv.style.animationDelay = (index * 0.1) + 's';
-                featureDiv.innerHTML = `
-                    <div>
-                        <strong>${emoji} Feature ${feature.id}</strong>
-                        <div style="opacity: 0.8; margin-top: 5px;">${feature.description}</div>
-                        <div style="font-size: 0.9rem; opacity: 0.6; margin-top: 3px;">
-                            Impact: ${feature.impact > 0 ? '+' : ''}${feature.impact.toFixed(4)}
-                        </div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-weight: bold; color: ${isFakeInfluence ? '#ff4444' : '#44ff44'};">
-                            → ${direction}
-                        </div>
-                        <div class="impact-bar">
-                            <div class="impact-fill" style="width: ${impactPercent}%; background: ${isFakeInfluence ? '#ff4444' : '#44ff44'};"></div>
-                        </div>
-                    </div>
-                `;
-                shapFeatures.appendChild(featureDiv);
+                const row = document.createElement('div');
+                row.className = 'shap-feature';
+                row.style.animationDelay = (index * 0.1) + 's';
+                const title = document.createElement('strong');
+                title.textContent = `Embedding dimension ${feature.id}`;
+                const detail = document.createElement('div');
+                detail.textContent = `SHAP value: ${Number(feature.impact).toFixed(5)} (direction depends on the model class)`;
+                row.append(title, detail);
+                container.appendChild(row);
             });
         }
 
-        // Generate mock SHAP data
-        function generateMockShap() {
-            const features = [
-                { id: 179, description: "Spectral centroid variation patterns", impact: (Math.random() - 0.5) * 0.05 },
-                { id: 154, description: "MFCC coefficient distribution", impact: (Math.random() - 0.5) * 0.05 },
-                { id: 89, description: "Fundamental frequency stability", impact: (Math.random() - 0.5) * 0.05 },
-                { id: 98, description: "Harmonic-to-noise ratio", impact: (Math.random() - 0.5) * 0.05 },
-                { id: 205, description: "Pitch contour smoothness", impact: (Math.random() - 0.5) * 0.05 },
-                { id: 67, description: "Formant frequency analysis", impact: (Math.random() - 0.5) * 0.05 },
-                { id: 132, description: "Jitter and shimmer metrics", impact: (Math.random() - 0.5) * 0.05 },
-                { id: 78, description: "Spectral rolloff characteristics", impact: (Math.random() - 0.5) * 0.05 }
-            ];
-            
-            return features.sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact)).slice(0, 6);
+        async function requestLlmExplanation() {
+            if (!currentResults) return;
+            const button = document.getElementById('llmExplainButton');
+            const output = document.getElementById('llmExplanation');
+            button.disabled = true;
+            output.textContent = 'Generating explanation…';
+            try {
+                const response = await fetch('/explain', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({prediction: currentResults.prediction, confidence: currentResults.confidence, features: shapData || []})
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(result.detail || `Server error: ${response.status}`);
+                output.textContent = result.explanation;
+            } catch (error) {
+                output.textContent = `Could not generate an explanation: ${error.message}`;
+            } finally {
+                button.disabled = false;
+            }
         }
 
         // Loading functions

@@ -1,9 +1,11 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 fastapi
-uvicorn
+uvicorn[standard]
 joblib
 numpy
 shap
 speechbrain
 scikit-learn
 python-multipart
-
+torch==2.5.1+cpu
+torchaudio==2.5.1+cpu
